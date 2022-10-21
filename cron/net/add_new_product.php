@@ -61,21 +61,65 @@ try
 
         $url='http://api.brain.com.ua/product_options/'.$product['product_id'].'/'.$sid.'?lang=ua&full=1';
         $result_brain = file_get_contents($url);
-        $attributes = json_decode($result_brain,true); 
+        $brain_attributes = json_decode($result_brain,true); 
 		
-        $item_attrs=$attributes['result'];
+        $item_attrs=$brain_attributes['result'];
         $options=array();
-        $filters=array();
+        $brain_filters=array();
 
         foreach($item_attrs as $item_attr)
         {           
             $options[]=array($item_attr['OptionName']=>$item_attr['ValueName']);
-            $filters[]=$item_attr['FilterName'];
+            $brain_filters[]=$item_attr['FilterName'];
         }
 
-        print_r($options);
-		exit;
-        
+        $attributes=array();
+        $language_id=3;
+        $attribute_group_id=370;
+
+
+        foreach($options as $option)
+        {
+            foreach($option as $key=>$value)
+            {
+                $result = (new CheckAttribute($key, $language_id))->check($dbh);
+            
+                if(!$result)
+                {
+                    $new_attr = (new AddAttribute($dbh))->add($attribute_group_id, $language_id, $key);  
+                    if($new_attr)
+                    {
+                        $attributes[]=array('attribute_id'=>$new_attr, 'text'=>$value, 'language_id' => $language_id,
+                        'name' => $key);
+                    }         
+                } else {        
+                    $attributes[]=array('attribute_id'=>$result, 'text'=>$value, 'language_id' => $language_id,
+                    'name' => $key);
+                } 
+            }
+        }
+
+
+        $filter_group_id=2;
+
+        $filters=array();
+
+
+        foreach($brain_filters as $value)
+        {
+            $result = (new CheckFilter($value, $language_id))->check($dbh);
+            
+            if(!$result)
+            {
+                $new_filter = (new AddFilter($dbh))->add($filter_group_id, $language_id, $value);  
+                if($new_filter)
+                {
+                    $filters[]=$new_filter;
+                }         
+            } else {        
+                $filters[]=$result;
+            }  
+        }
 
         $item = array(
             'model' => $item_details['articul'],
@@ -101,23 +145,10 @@ try
                     'description' => $description
                 )
             ),
+            'product_attributes' => $attributes,
             
-            'product_attributes' => array(
-                array(
-                    'attribute_id'=>1,
-                    'language_id' => 1,
-                    'name' => 'name_rus',
-                    'text' => 'description_rus'
-                ),
-                array(
-                    'attribute_id'=>1,
-                    'language_id' => 3,
-                    'name' => 'name_ua',
-                    'text' => 'description_ua'
-                )
-            ),
             
-            'product_filters' => array(1, 2),
+           'product_filters' => $filters,
             
             );
         

@@ -133,7 +133,7 @@ class AddProduct
     {
         $errors = false;
 		$path=$_SERVER['DOCUMENT_ROOT'].'/image/catalog/'.$product_id;
-		//mkdir($path, 0777);
+		mkdir($path, 0777);
         
        foreach($item->product_images as $key=>$image)
         {
@@ -147,7 +147,7 @@ class AddProduct
 		    if($sth->errorInfo()[2]){$errors = true;} 
             }  
 				
-			//copy($image, $path.'/'.basename($image));	
+			copy($image, $path.'/'.basename($image));	
 		      			
         }        
         if($errors){return false;}else{return true;} 
