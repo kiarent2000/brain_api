@@ -38,6 +38,9 @@ class AddProduct
                 if(!$filters){$errors[]=106;} // Ошибка добавления фильтров
             }
 
+            $main_image = $this->updateMainImage($item, $product_id);
+            if(!$main_image){$errors[]=108;} // Ошибка обновления основного изображения            
+
             if($item->product_attributes)
             {
                 $attributes = $this->addProductAttributes($item, $product_id);
@@ -90,10 +93,22 @@ class AddProduct
     private function addCategory(Item $item, int $product_id) : bool
     {
         $errors = false;
-        $sql = 'INSERT INTO `'. DB_PREFIX.'_product_to_category` SET `product_id` = '.$product_id.', `category_id` = '.$item->product_category; 
+
+        $category_id = $this->getCategory($item->product_category);
+
+        $sql = 'INSERT INTO `'. DB_PREFIX.'_product_to_category` SET `product_id` = '.$product_id.', `category_id` = '.$category_id; 
         $sth = $this->dbh->prepare($sql);
         $sth->execute();
 		if($sth->errorInfo()[2]){return false;}else{return true;}   
+    }
+
+
+    private function getCategory(int $category_id) : int
+    {
+        $sql = 'SELECT `category_id` FROM `'. DB_PREFIX.'_category_description` WHERE `brain_id` = '.$category_id;
+        $sth = $this->dbh->query($sql);
+        $result = $sth->fetch();
+        return $result['category_id'];   
     }
 
     private function addProductToStore(int $product_id) : bool
@@ -117,17 +132,37 @@ class AddProduct
     private function addProductImages(Item $item, int $product_id) : bool
     {
         $errors = false;
-
-        foreach($item->product_images as $key=>$image)
+		$path=$_SERVER['DOCUMENT_ROOT'].'/image/catalog/'.$product_id;
+		//mkdir($path, 0777);
+        
+       foreach($item->product_images as $key=>$image)
         {
+            if($key!==0)
+            {
+            $image_path='catalog/'.$product_id.'/'.basename($image);            
             $sql = 'INSERT INTO `'. DB_PREFIX.'_product_image` SET `sort_order` = '.$key.', `product_id` = '.$product_id.', `image` = :image';         
             $sth = $this->dbh->prepare($sql);
-            $sth->bindValue(':image', $image, PDO::PARAM_STR);
+            $sth->bindValue(':image', $image_path, PDO::PARAM_STR);
             $sth->execute();
-		    if($sth->errorInfo()[2]){$errors = true;}            
+		    if($sth->errorInfo()[2]){$errors = true;} 
+            }  
+				
+			//copy($image, $path.'/'.basename($image));	
+		      			
         }        
         if($errors){return false;}else{return true;} 
     }
+
+    private function updateMainImage(Item $item, int $product_id) : bool 
+    {
+		$image_path='catalog/'.$product_id.'/'.basename($item->image); 
+        $sql = 'UPDATE `'. DB_PREFIX.'_product` SET `image` = "'.$image_path.'" WHERE `product_id` = '.$product_id;         
+        $sth = $this->dbh->prepare($sql);
+		$sth->execute();
+        if($sth->errorInfo()[2]){return false;}else{return true;}
+    }
+
+
 
     private function addProductFilters(Item $item, int $product_id) : bool
     {

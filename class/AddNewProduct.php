@@ -12,4 +12,11 @@ class AddNewProduct
         $sth = $this->dbh->prepare($sql); 
         $sth->execute();
     }   
+
+    public function delete($id)
+    {
+        $sql = 'DELETE FROM `new_products` WHERE `product_id` = '.$id;
+        $sth = $this->dbh->prepare($sql); 
+        $sth->execute();
+    }
 }
